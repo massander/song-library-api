@@ -1,14 +1,17 @@
 package api
 
 import (
+	"song-library-api/internal/storage/postgres"
+
 	"github.com/gofiber/fiber/v2"
 )
 
 type APIService struct {
+	storage *postgres.Storage
 }
 
-func NewAPIService() *APIService {
-	return &APIService{}
+func NewAPIService(storage *postgres.Storage) *APIService {
+	return &APIService{storage: storage}
 }
 
 func (s *APIService) RegisterGateway(router fiber.Router) {

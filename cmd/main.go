@@ -29,7 +29,7 @@ func main() {
 
 	v1 := app.Group("/api/v1")
 
-	apiService := api.NewAPIService()
+	apiService := api.NewAPIService(storage)
 	apiService.RegisterGateway(v1)
 
 	app.Listen(":3000")
