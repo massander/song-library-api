@@ -4,6 +4,6 @@ create table if not exists
         "name" text not null,
         "group" text not null,
         "text" text[] not null default '{}',
-        "releaseDate" date not null,
+        "release_date" date not null,
         "link" text not null default ''
     );
