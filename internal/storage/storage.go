@@ -23,4 +23,5 @@ type BaseStorage[T any] interface {
 type SongStorage interface {
 	BaseStorage[core.Song]
 	SongLyrics(ctx context.Context, songID uuid.UUID, verse int) ([]string, error)
+	FindByFilter(ctx context.Context, filters core.SongFilters, pagination core.Pagination) ([]core.Song, error)
 }

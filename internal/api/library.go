@@ -12,29 +12,59 @@ import (
 )
 
 func (s *APIService) listAllSongs(c *fiber.Ctx) error {
-	type Filters struct {
-		Name        string `query:"name"`
-		Group       string `query:"group"`
-		ReleaseDate string `query:"releaseDate"`
-
-		// Есть ли смысл делать филтрацию по тексту и ссылке?
-		// Если делать поиск по словам из песни то нужно другую базу данных использовать.
-		// Филтрации по ссылки выглядит очень странно
-		// Text        string `query:"text"`
-		// Link        string `query:"link"`
-
-		Page int `query:"page"`
-		Size int `query:"size"`
+	type QueryParams struct {
+		core.SongFilters
+		core.Pagination
 	}
 
-	var filters Filters
-	if err := c.QueryParser(&filters); err != nil {
+	var query QueryParams
+	if err := c.QueryParser(&query); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    "INVALID_QUERY_PARAMETR",
 			"message": "invalid params",
 		})
 	}
 
-	return c.JSON(filters)
+	filters := core.SongFilters{
+		Name:  query.Name,
+		Group: query.Group,
+	}
+
+	if query.ReleaseDate != "" {
+		date, err := time.Parse(time.DateOnly, strings.ReplaceAll(query.ReleaseDate, ".", "-"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"code":    "INVALID_QUERY_PARAMETR",
+				"message": "releae date must be valid date only format",
+			})
+		}
+
+		filters.ReleaseDate = date.String()
+	}
+
+	if query.Size < 0 || query.Offset < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    "INVALID_QUERY_PARAMETR",
+			"message": "size and offset must be positive numbers",
+		})
+	}
+
+	pagination := core.Pagination{}
+	if query.Size == 0 {
+		// Default limit is 5
+		pagination.Size = 5
+	}
+	pagination.Offset = query.Offset
+
+	songs, err := s.storage.Songs.FindByFilter(c.Context(), filters, pagination)
+	if err != nil {
+		fmt.Println(err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code": "INTERNAL_ERROR",
+		})
+	}
+
+	return c.JSON(songs)
 }
 
 func (s *APIService) getSongLyrics(c *fiber.Ctx) error {

@@ -17,6 +17,61 @@ type SongStorage struct {
 	pool *pgxpool.Pool
 }
 
+// FindByFilter implements storage.SongStorage.
+func (s *SongStorage) FindByFilter(ctx context.Context, filters core.SongFilters, pagination core.Pagination) ([]core.Song, error) {
+	const op = "storage.postgres.song.FindByFilter"
+
+	filtersMap := make(map[string]any)
+	if filters.Name != "" {
+		filtersMap["name"] = filters.Name
+	}
+
+	if filters.Group != "" {
+		filtersMap["group"] = filters.Group
+	}
+
+	if filters.ReleaseDate != "" {
+		filtersMap["release_date"] = filtersMap
+	}
+
+	where := "1=1"
+	args := make([]any, 2)
+	args[0] = pagination.Offset
+	args[1] = pagination.Size
+
+	position := 3
+
+	for k, v := range filtersMap {
+		where += fmt.Sprintf(` and "%s"=$%d`, k, position)
+		args = append(args, v)
+		position++
+	}
+
+	query := fmt.Sprintf(`select * from songs where %s offset $1 limit $2`, where)
+
+	fmt.Println(query)
+
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		return []core.Song{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	songs := make([]core.Song, 0)
+	for rows.Next() {
+		var song core.Song
+
+		err = rows.Scan(&song.ID, &song.Name, &song.Group, &song.Text, &song.ReleaseDate, &song.Link)
+		if err != nil {
+			return []core.Song{}, fmt.Errorf("%s: %w", op, err)
+		}
+
+		songs = append(songs, song)
+	}
+
+	return songs, nil
+
+}
+
 // Delete implements storage.SongStorage.
 func (s *SongStorage) Delete(ctx context.Context, entityID uuid.UUID) error {
 	panic("unimplemented")
